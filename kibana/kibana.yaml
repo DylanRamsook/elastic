@@ -1,0 +1,25 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: kibana
+spec:
+  version: 7.13.0
+  count: 1
+  elasticsearchRef:
+    name: hackpack-elasticsearch-cluster
+  podTemplate:
+      spec:
+       containers:
+         - name: kibana
+           env:
+           - name: SERVER_BASEPATH
+             value: "/kibana"
+           - name: SERVER_MAXPAYLOAD
+             value: "10485760"
+  http:
+     tls:
+       selfSignedCertificate:
+          disabled: true
+     service:
+      spec:
+        type: ClusterIP

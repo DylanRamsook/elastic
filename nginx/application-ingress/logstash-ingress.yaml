@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fwd-syslog-svc-ingress
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /logstash-forwarder-syslog
+        pathType: Prefix
+        backend:
+          service:
+            name: fwd-syslog-svc
+            port:
+              number: 1407

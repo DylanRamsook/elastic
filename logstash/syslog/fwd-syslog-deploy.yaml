@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fwd-syslog
+  labels:
+    component: elasticsearch
+    role: logstash
+    type: fwd
+    service: syslog
+spec:
+  replicas: 1
+  selector:
+   matchLabels:
+     component: elasticsearch
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: logstash
+        type: fwd
+        service: syslog
+    spec:
+      volumes:
+      - name: configmap-volume
+        configMap:
+          name: fwd-rqsyslog
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:7.13.3
+        imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: 1000m
+          requests:
+            cpu: 200m
+        env:
+        - name: LOGSTASH_SERVICE
+          value: "syslog"
+        - name: LOGSTASH_USER
+          value: "lsuser"
+        - name: LOGSTASH_PASSWD
+          value: "lspass"
+        - name: STREAM_USER
+          value: "stuser"
+        - name: STREAM_PASSWD
+          value: "stpass"
+        - name: TI_USER
+          value: "tiuser"
+        - name: TI_PASSWD
+          value: "tipass"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.HOSTS
+#          value: "hackpack-elasticsearch-cluster-es-http"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.USERNAME
+#          value: "elastic"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.PASSWORD
+#          value: "I35T8JNCg589e61FjL2iFQ8m"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.SSL.VERIFICATION_MODE
+#          value: "none"
+        - name: XPACK.MONITORING.ENABLED
+          value: "false"
+        ports:
+        - containerPort: 1470
+          name: syslog-tcp
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /usr/share/logstash/pipeline
+          name: configmap-volume
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fwd-syslog
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1beta1
+    kind: Deployment
+    name: fwd-syslog
+  minReplicas: 1
+  maxReplicas: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fwd-syslog-svc
+  labels:
+    component: elasticsearch
+    role: logstash
+    type: fwd
+    service: syslog
+spec:
+  selector:
+    component: elasticsearch
+    role: logstash
+    type: fwd
+    service: syslog
+  ports:
+  - name: http-tcp
+    port: 1470
+    targetPort: 1470
+    protocol: TCP
+  externalIPs:
+    - 172.28.11.162

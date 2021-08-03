@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fwd-beats
+  labels:
+    component: elasticsearch
+    role: logstash
+    type: fwd
+    service: beats
+spec:
+  replicas: 1
+  selector:
+   matchLabels:
+     component: elasticsearch
+  template:
+    metadata:
+      labels:
+        component: elasticsearch
+        role: logstash
+        type: fwd
+        service: beats
+    spec:
+      volumes:
+      - name: configmap-volume
+        configMap:
+          name: fwd-beats
+      containers:
+      - name: logstash
+        image: docker.elastic.co/logstash/logstash:7.13.3
+        imagePullPolicy: Always
+        resources:
+          limits:
+            cpu: 1000m
+          requests:
+            cpu: 200m
+        env:
+        - name: LOGSTASH_SERVICE
+          value: "beats"
+        - name: LOGSTASH_USER
+          value: "lsuser"
+        - name: LOGSTASH_PASSWD
+          value: "lspass"
+        - name: STREAM_USER
+          value: "stuser"
+        - name: STREAM_PASSWD
+          value: "stpass"
+        - name: TI_USER
+          value: "tiuser"
+        - name: TI_PASSWD
+          value: "tipass"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.HOSTS
+#          value: "hackpack-elasticsearch-cluster-es-http"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.USERNAME
+#          value: "elastic"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.PASSWORD
+#          value: "I35T8JNCg589e61FjL2iFQ8m"
+#        - name: XPACK.MONITORING.ELASTICSEARCH.SSL.VERIFICATION_MODE
+#          value: "none"
+        - name: XPACK.MONITORING.ENABLED
+          value: "false"
+        ports:
+        - containerPort: 5044
+          name: fwd-beats
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /usr/share/logstash/pipeline
+          name: configmap-volume
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: fwd-beats
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: fwd-beats
+  minReplicas: 1
+  maxReplicas: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fwd-beats-svc
+  labels:
+    component: elasticsearch
+    role: logstash
+    type: fwd
+    service: beats
+spec:
+  selector:
+    component: elasticsearch
+    role: logstash
+    type: fwd
+    service: beats
+  ports:
+  - name: http-tcp
+    port: 5044
+    targetPort: 5044
+    protocol: TCP
+  externalIPs:
+    - 172.28.11.162
